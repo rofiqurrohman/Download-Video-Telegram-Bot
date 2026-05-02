@@ -1,4 +1,4 @@
-import { getJobStatus, JobStatus } from "../services/ytdlp";
+import { getJobStatus, JobStatus } from '../services/ytdlp';
 
 /**
  * Poll status job download hingga completed/failed atau timeout.
@@ -9,19 +9,13 @@ import { getJobStatus, JobStatus } from "../services/ytdlp";
  * @returns             - JobStatus saat completed
  * @throws              - Error jika timeout atau status failed
  */
-export async function pollJob(
-  jobId: string,
-  intervalMs = 3000,
-  timeoutMs = 600_000,
-): Promise<JobStatus> {
+export async function pollJob(jobId: string, intervalMs = 3000, timeoutMs = 1_800_000): Promise<JobStatus> {
   const startTime = Date.now();
 
   while (true) {
     // Cek timeout
     if (Date.now() - startTime > timeoutMs) {
-      throw new Error(
-        "Download terlalu lama. Coba lagi atau gunakan URL lain.",
-      );
+      throw new Error('Download terlalu lama. Coba lagi atau gunakan URL lain.');
     }
 
     let job: JobStatus;
@@ -34,15 +28,12 @@ export async function pollJob(
       continue;
     }
 
-    if (job.status === "completed") {
+    if (job.status === 'completed') {
       return job;
     }
 
-    if (job.status === "failed") {
-      const errMsg =
-        job.logs?.join("\n") ??
-        job.error ??
-        "Download gagal tanpa pesan error.";
+    if (job.status === 'failed') {
+      const errMsg = job.logs?.join('\n') ?? job.error ?? 'Download gagal tanpa pesan error.';
       throw new Error(`Download gagal: ${errMsg}`);
     }
 

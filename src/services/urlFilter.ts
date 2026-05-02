@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 export interface TransformResult {
   downloadUrl: string;
@@ -17,13 +17,13 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new Error("URL tidak valid");
+    throw new Error('URL tidak valid');
   }
 
-  const hostname = url.hostname.replace(/^www\./, "");
+  const hostname = url.hostname.replace(/^www\./, '');
 
-  const urlFilterVidoy = ["vidtronx.com", "vide.la", "vidoy.com"];
-  const urlFilterVidara = ["vidara.to"];
+  const urlFilterVidoy = ['vidtronx.com', 'vide.la', 'vidoy.com'];
+  const urlFilterVidara = ['vidara.to'];
 
   // --- Case 1: vidtronx.com atau vide.la ---
   if (urlFilterVidoy.includes(hostname)) {
@@ -51,14 +51,19 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
 
     let streamData: { streaming_url: string; title?: string };
     try {
-      const res = await axios.get(apiUrl, { timeout: 10000 });
+      // const res = await axios.get(apiUrl, { timeout: 10000 });
+      const bodyRaw = JSON.stringify({ filecode: id, device: 'web' });
+      const res = await axios.post(apiUrl, bodyRaw, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' },
+      });
       streamData = res.data;
     } catch (err) {
-      throw new Error("Gagal mengambil info stream dari vidara. Coba lagi.");
+      throw new Error('Gagal mengambil info stream dari vidara. Coba lagi.');
     }
 
     if (!streamData?.streaming_url) {
-      throw new Error("Gagal mengambil info stream dari vidara. Coba lagi.");
+      throw new Error('Gagal mengambil info stream dari vidara. Coba lagi.');
     }
 
     const result: TransformResult = {
@@ -83,7 +88,7 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
 export function isValidUrl(text: string): boolean {
   try {
     const u = new URL(text);
-    return u.protocol === "http:" || u.protocol === "https:";
+    return u.protocol === 'http:' || u.protocol === 'https:';
   } catch {
     return false;
   }
