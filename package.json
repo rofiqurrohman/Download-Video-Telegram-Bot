@@ -1,0 +1,35 @@
+{
+  "name": "telegram-video-downloader-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for downloading videos via yt-dlp service",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "login": "tsx src/login.ts"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "ytdlp",
+    "downloader"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.15.0",
+    "dotenv": "^17.4.1",
+    "grammy": "^1.42.0",
+    "input": "^1.0.1",
+    "mongoose": "^9.4.1",
+    "telegram": "^2.26.22"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
