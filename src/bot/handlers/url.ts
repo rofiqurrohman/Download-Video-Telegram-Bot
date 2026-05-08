@@ -91,7 +91,7 @@ export async function urlHandler(ctx: Context): Promise<void> {
     try {
       await getDataInfo(downloadUrl);
     } catch (err: any) {
-      // console.error('[url] Error get data info:', err);
+      console.error('[url] Error get data info:', err);
       await editStatus('❌ Gagal mendapatkan info video. Coba lagi.');
       return;
     }

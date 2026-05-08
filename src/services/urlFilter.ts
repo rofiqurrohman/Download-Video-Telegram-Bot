@@ -22,8 +22,10 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
 
   const hostname = url.hostname.replace(/^www\./, '');
 
-  const urlFilterVidoy = ['vidtronx.com', 'vide.la', 'vidoy.com'];
-  const urlFilterVidara = ['vidara.to'];
+  // const urlFilterVidoy = ['vidtronx.com', 'vide.la', 'vidoy.com', 'vidzp.com'];
+  // const urlFilterVidara = ['vidara.to'];
+  const urlFilterVidoy = process.env.VIDOY_URLS?.split(',') || [];
+  const urlFilterVidara = process.env.VIDARA_URLS?.split(',') || [];
 
   // --- Case 1: vidtronx.com atau vide.la ---
   if (urlFilterVidoy.includes(hostname)) {
@@ -31,7 +33,7 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
     const match = url.pathname.match(/^\/(e|f|v)\/([^/]+)/);
     if (match) {
       const id = match[2];
-      const downloadUrl = `https://vidtronx.com/embed.php?bucket=vidoycdn&id=${id}`;
+      const downloadUrl = `https://vidzp.com/embed.php?bucket=vidoycdn&id=${id}`;
       return { downloadUrl };
     }
     // Jika pattern tidak cocok, fallthrough ke Case 3
