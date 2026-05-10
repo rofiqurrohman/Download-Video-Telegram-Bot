@@ -254,7 +254,7 @@ async function sendSmallFile(
       ),
     )
     .catch((err) => {
-      console.error("[storage] Gagal upload ke storage channel:", err);
+      // console.error("[storage] Gagal upload ke storage channel:", err);
     });
 }
 
