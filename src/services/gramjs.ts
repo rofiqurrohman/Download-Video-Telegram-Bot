@@ -81,6 +81,7 @@ export async function uploadToStorageChannel(
   buffer: Buffer,
   fileName: string,
   caption?: string,
+  thumbnailBuffer?: Buffer | null,
 ): Promise<StorageUploadResult> {
   const gramClient = getClient();
   const channelId = process.env.STORAGE_CHANNEL_ID!;
@@ -90,15 +91,23 @@ export async function uploadToStorageChannel(
   // Tulis buffer ke file sementara agar GramJS bisa stream file besar
   const tmpDir = os.tmpdir();
   const tmpPath = path.join(tmpDir, `gramjs_upload_${Date.now()}_${fileName}`);
+  const tmpThumbPath = thumbnailBuffer
+    ? path.join(tmpDir, `gramjs_thumb_${Date.now()}.jpg`)
+    : null;
 
   try {
     fs.writeFileSync(tmpPath, buffer);
+    if (tmpThumbPath && thumbnailBuffer) {
+      fs.writeFileSync(tmpThumbPath, thumbnailBuffer);
+    }
 
     const customFile = new CustomFile(fileName, buffer.length, tmpPath);
 
     const result = await gramClient.sendFile(entity, {
       file: customFile,
       caption: caption ?? fileName,
+      // GramJS menerima path string langsung untuk thumb (bukan CustomFile)
+      thumb: tmpThumbPath ?? undefined,
       attributes: [new Api.DocumentAttributeFilename({ fileName })],
       forceDocument: false, // biarkan Telegram deteksi sebagai video jika bisa
     });
@@ -121,6 +130,11 @@ export async function uploadToStorageChannel(
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
     } catch {
       // ignore error saat hapus tmp
+    }
+    try {
+      if (tmpThumbPath && fs.existsSync(tmpThumbPath)) fs.unlinkSync(tmpThumbPath);
+    } catch {
+      // ignore error saat hapus tmp thumbnail
     }
   }
 }

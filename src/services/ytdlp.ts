@@ -1,4 +1,6 @@
 import axios from "axios";
+import https from "https";
+import http from "http";
 
 const BASE_URL = process.env.YTDLP_API_BASE_URL!;
 const API_KEY = process.env.YTDLP_API_KEY!;
@@ -24,10 +26,32 @@ export interface FileRecord {
   original_name?: string;
 }
 
+export interface ThumbnailEntry {
+  url: string;
+  width?: number;
+  height?: number;
+  id?: string;
+  preference?: number;
+  resolution?: string;
+}
+
+export interface VideoInfo {
+  title?: string;
+  thumbnail?: string;
+  thumbnails?: ThumbnailEntry[];
+  duration?: number;
+  uploader?: string;
+  webpage_url?: string;
+  ext?: string;
+  filesize?: number;
+  filesize_approx?: number;
+  [key: string]: any;
+}
+
 /**
  * Get info metadata video
  */
-export async function getDataInfo(url: string): Promise<any> {
+export async function getDataInfo(url: string): Promise<VideoInfo> {
   const res = await axios.post(
     `${BASE_URL}/api/info`,
     {
@@ -37,7 +61,22 @@ export async function getDataInfo(url: string): Promise<any> {
       headers: headers(),
     },
   );
-  return res.data;
+  return res.data?.data ?? res.data;
+}
+
+/**
+ * Download thumbnail dari URL ke Buffer
+ */
+export async function downloadThumbnailBuffer(thumbnailUrl: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const protocol = thumbnailUrl.startsWith('https') ? https : http;
+    protocol.get(thumbnailUrl, (response) => {
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk: Buffer) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+      response.on('error', reject);
+    }).on('error', reject);
+  });
 }
 
 /**
