@@ -3,6 +3,7 @@ import axios from 'axios';
 export interface TransformResult {
   downloadUrl: string;
   title?: string;
+  thumbnail?: string;
   outputTemplate?: string;
 }
 
@@ -24,6 +25,7 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
 
   // const urlFilterVidoy = ['vidtronx.com', 'vide.la', 'vidoy.com', 'vidzp.com'];
   // const urlFilterVidara = ['vidara.to'];
+  const urlVidoyApi = process.env.VIDOY_URL_API || 'https://vidoy.com';
   const urlFilterVidoy = process.env.VIDOY_URLS?.split(',') || [];
   const urlFilterVidara = process.env.VIDARA_URLS?.split(',') || [];
 
@@ -33,7 +35,8 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
     const match = url.pathname.match(/^\/(e|f|v)\/([^/]+)/);
     if (match) {
       const id = match[2];
-      const downloadUrl = `https://vidzp.com/embed.php?bucket=vidoycdn&id=${id}`;
+      // const downloadUrl = `https://vidzp.com/embed.php?bucket=vidoycdn&id=${id}`;
+      const downloadUrl = `${urlVidoyApi}/embed.php?bucket=vidoycdn&id=${id}`;
       return { downloadUrl };
     }
     // Jika pattern tidak cocok, fallthrough ke Case 3
@@ -49,9 +52,9 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
     }
 
     const id = match[2];
-    const apiUrl = `https://vidara.so/api/stream?filecode=${id}`;
+    const apiUrl = `https://vidara.so/api/stream?filecode=${id}&device=web`;
 
-    let streamData: { streaming_url: string; title?: string };
+    let streamData: { streaming_url: string; title?: string; thumbnail?: string } | null = null;
     try {
       // const res = await axios.get(apiUrl, { timeout: 10000 });
       const bodyRaw = JSON.stringify({ filecode: id, device: 'web' });
@@ -70,6 +73,7 @@ export async function transformUrl(rawUrl: string): Promise<TransformResult> {
 
     const result: TransformResult = {
       downloadUrl: streamData.streaming_url,
+      thumbnail: streamData.thumbnail,
     };
 
     if (streamData.title) {

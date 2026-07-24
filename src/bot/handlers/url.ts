@@ -1,6 +1,6 @@
-import { Context, InputFile } from "grammy";
-import { User } from "../../models/User";
-import { isValidUrl, transformUrl } from "../../services/urlFilter";
+import { Context, InputFile } from 'grammy';
+import { User } from '../../models/User';
+import { isValidUrl, transformUrl } from '../../services/urlFilter';
 import {
   requestDownload,
   getJobFiles,
@@ -8,9 +8,9 @@ import {
   getDataInfo,
   downloadThumbnailBuffer,
   VideoInfo,
-} from "../../services/ytdlp";
-import { pollJob } from "../../utils/poller";
-import { uploadToStorageChannel } from "../../services/gramjs";
+} from '../../services/ytdlp';
+import { pollJob } from '../../utils/poller';
+import { uploadToStorageChannel } from '../../services/gramjs';
 
 const MB_50 = 50 * 1024 * 1024; // 50 MB dalam bytes
 
@@ -30,18 +30,15 @@ export async function urlHandler(ctx: Context): Promise<void> {
   // --- Cek apakah user diblokir ---
   const dbUser = await User.findOne({ telegramId: user.id });
   if (dbUser?.isBlocked) {
-    await ctx.reply(
-      "🚫 Akses kamu telah diblokir. Hubungi admin jika ada pertanyaan.",
-      {
-        reply_to_message_id: ctx.message?.message_id,
-      },
-    );
+    await ctx.reply('🚫 Akses kamu telah diblokir. Hubungi admin jika ada pertanyaan.', {
+      reply_to_message_id: ctx.message?.message_id,
+    });
     return;
   }
 
   // --- Validasi URL ---
   if (!isValidUrl(text)) {
-    await ctx.reply("❌ URL tidak dikenali. Kirim URL video yang valid.", {
+    await ctx.reply('❌ URL tidak dikenali. Kirim URL video yang valid.', {
       reply_to_message_id: ctx.message?.message_id,
     });
     return;
@@ -65,17 +62,13 @@ export async function urlHandler(ctx: Context): Promise<void> {
   }
 
   // --- Kirim pesan status awal ---
-  const statusMsg = await ctx.reply("⏳ Mengambil info video...", {
+  const statusMsg = await ctx.reply('⏳ Mengambil info video...', {
     reply_to_message_id: ctx.message?.message_id,
   });
 
   const editStatus = async (newText: string) => {
     try {
-      await ctx.api.editMessageText(
-        ctx.chat!.id,
-        statusMsg.message_id,
-        newText,
-      );
+      await ctx.api.editMessageText(ctx.chat!.id, statusMsg.message_id, newText);
     } catch {
       // Abaikan jika pesan sudah tidak bisa diedit
     }
@@ -95,25 +88,25 @@ export async function urlHandler(ctx: Context): Promise<void> {
     try {
       transformResult = await transformUrl(text);
     } catch (err: any) {
-      await editStatus(`❌ ${err.message ?? "Gagal memproses URL."}`);
+      await editStatus(`❌ ${err.message ?? 'Gagal memproses URL.'}`);
       return;
     }
 
-    const { downloadUrl, outputTemplate } = transformResult;
+    const { downloadUrl, outputTemplate, thumbnail: thumbnailUrlResult } = transformResult;
 
     // ─── 2. Ambil info video ────────────────────────────────────────────────────
     let videoInfo: VideoInfo | null = null;
     try {
       videoInfo = await getDataInfo(downloadUrl);
     } catch (err: any) {
-      console.error("[url] Error get data info:", err);
-      await editStatus("❌ Gagal mendapatkan info video. Coba lagi.");
+      console.error('[url] Error get data info:', err);
+      await editStatus('❌ Gagal mendapatkan info video. Coba lagi.');
       return;
     }
 
     // ─── 2b. Download thumbnail (best quality, non-blocking jika gagal) ─────────
     let thumbnailBuffer: Buffer | null = null;
-    const thumbnailUrl = videoInfo?.thumbnail;
+    const thumbnailUrl = videoInfo?.thumbnail || thumbnailUrlResult;
     if (thumbnailUrl) {
       try {
         thumbnailBuffer = await downloadThumbnailBuffer(thumbnailUrl);
@@ -130,11 +123,11 @@ export async function urlHandler(ctx: Context): Promise<void> {
       });
       jobId = downloadReq.id;
     } catch (err: any) {
-      await editStatus("❌ Gagal menghubungi layanan download. Coba lagi.");
+      await editStatus('❌ Gagal menghubungi layanan download. Coba lagi.');
       return;
     }
 
-    await editStatus("📥 Mendownload video, mohon tunggu...");
+    await editStatus('📥 Mendownload video, mohon tunggu...');
 
     // ─── 4. Polling status job ──────────────────────────────────────────────────
     try {
@@ -149,59 +142,42 @@ export async function urlHandler(ctx: Context): Promise<void> {
     try {
       files = await getJobFiles(jobId);
     } catch (err: any) {
-      await editStatus("❌ File tidak tersedia setelah download.");
+      await editStatus('❌ File tidak tersedia setelah download.');
       return;
     }
 
     if (!files || files.length === 0) {
-      await editStatus("❌ File tidak tersedia setelah download.");
+      await editStatus('❌ File tidak tersedia setelah download.');
       return;
     }
 
     const file = files[0];
     const fileSizeBytes = file.size_bytes;
-    const fileName =
-      file.filename || file.original_name || `video-${jobId}.mp4`;
+    const fileName = file.filename || file.original_name || `video-${jobId}.mp4`;
 
-    await editStatus("📦 Menyiapkan video untuk dikirim...");
+    await editStatus('📦 Menyiapkan video untuk dikirim...');
 
     // ─── 6. Download file ke buffer ─────────────────────────────────────────────
     let fileBuffer: Buffer;
     try {
       fileBuffer = await downloadFileBuffer(file.id);
     } catch (err: any) {
-      await editStatus("❌ Gagal mengunduh file dari server. Coba lagi.");
+      await editStatus('❌ Gagal mengunduh file dari server. Coba lagi.');
       return;
     }
 
     // ─── 7. Kirim ke user berdasarkan ukuran file ───────────────────────────────
     if (fileSizeBytes <= MB_50) {
-      await sendSmallFile(
-        ctx,
-        user.id,
-        fileSizeBytes,
-        fileBuffer,
-        fileName,
-        editStatus,
-        thumbnailBuffer,
-      );
+      await sendSmallFile(ctx, user.id, fileSizeBytes, fileBuffer, fileName, editStatus, thumbnailBuffer);
       await deleteStatus();
     } else {
-      await sendLargeFile(
-        ctx,
-        user.id,
-        fileSizeBytes,
-        fileBuffer,
-        fileName,
-        editStatus,
-        thumbnailBuffer,
-      );
+      await sendLargeFile(ctx, user.id, fileSizeBytes, fileBuffer, fileName, editStatus, thumbnailBuffer);
       await deleteStatus();
     }
   } catch (err: any) {
     // console.error('[url] Unexpected error:', err);
     try {
-      await editStatus("❌ Server sedang sibuk, coba lagi beberapa saat lagi.");
+      await editStatus('❌ Server sedang sibuk, coba lagi beberapa saat lagi.');
     } catch {
       // ignore
     }
@@ -219,16 +195,14 @@ async function sendSmallFile(
   editStatus: (text: string) => Promise<void>,
   thumbnailBuffer?: Buffer | null,
 ): Promise<void> {
-  await editStatus("♻️ Mengirim video...");
+  await editStatus('♻️ Mengirim video...');
 
   try {
     await ctx.replyWithVideo(new InputFile(fileBuffer, fileName), {
       caption: `🎬 <b>${fileName}</b>`,
-      parse_mode: "HTML",
+      parse_mode: 'HTML',
       reply_to_message_id: ctx.message?.message_id,
-      ...(thumbnailBuffer
-        ? { thumbnail: new InputFile(thumbnailBuffer, "thumbnail.jpg") }
-        : {}),
+      ...(thumbnailBuffer ? { thumbnail: new InputFile(thumbnailBuffer, 'thumbnail.jpg') } : {}),
     });
 
     // await editStatus('✅ Video berhasil dikirim!');
@@ -242,16 +216,14 @@ async function sendSmallFile(
     });
   } catch (err: any) {
     // console.error('[url] Error kirim video kecil:', err);
-    await editStatus("❌ Terjadi kesalahan saat mengirim video");
+    await editStatus('❌ Terjadi kesalahan saat mengirim video');
     return;
   }
 
   // Upload ke storage channel di background (non-blocking)
   uploadToStorageChannel(fileBuffer, fileName, fileName, thumbnailBuffer)
     .then(({ messageId, channelId }) =>
-      console.log(
-        `[storage] Upload selesai. messageId=${messageId}, channelId=${channelId}`,
-      ),
+      console.log(`[storage] Upload selesai. messageId=${messageId}, channelId=${channelId}`),
     )
     .catch((err) => {
       // console.error("[storage] Gagal upload ke storage channel:", err);
@@ -270,27 +242,20 @@ async function sendLargeFile(
   thumbnailBuffer?: Buffer | null,
 ): Promise<void> {
   // await editStatus('📤 File besar terdeteksi, mengupload ke relay channel...');
-  await editStatus("♻️ Mengirim video...");
+  await editStatus('♻️ Mengirim video...');
 
   let messageId: number;
   let channelId: string;
 
   // 1. Upload ke storage channel via GramJS
   try {
-    const result = await uploadToStorageChannel(
-      fileBuffer,
-      fileName,
-      fileName,
-      thumbnailBuffer,
-    );
+    const result = await uploadToStorageChannel(fileBuffer, fileName, fileName, thumbnailBuffer);
     messageId = result.messageId;
     channelId = result.channelId;
     console.log(`[url] Upload storage channel selesai. messageId=${messageId}`);
   } catch (err: any) {
     // console.error('[url] Error upload ke storage channel:', err);
-    await editStatus(
-      "❌ Gagal mengupload file besar ke relay channel. Coba lagi.",
-    );
+    await editStatus('❌ Gagal mengupload file besar ke relay channel. Coba lagi.');
     return;
   }
 
@@ -318,6 +283,6 @@ async function sendLargeFile(
     });
   } catch (err: any) {
     // console.error('[url] Error forward video dari storage channel:', err);
-    await editStatus("❌ Terjadi kesalahan saat meneruskan video. Coba lagi.");
+    await editStatus('❌ Terjadi kesalahan saat meneruskan video. Coba lagi.');
   }
 }
